@@ -17,29 +17,31 @@ Value *eval(Value *, Frame *);
 
 /*
 evalEach
-params:
-returns:
+params: args - a pointer to a Value struct, frame - a pointer to a Frame struct
+returns: a Value struct containing the evaluated arguments to be passed into apply()
 */
 Value *evalEach(Value *args, Frame *frame) {
-    // something
-}
-
-/*
-apply
-params:
-returns:
-*/
-Value *apply(Value *evaledOperator, Value *evaledArgs) {
-    // something
+    Value *evaledArgs = makeNull();
+    Value *arg = args;
+    while (arg -> type != NULL_TYPE) {
+        evaledArgs = cons(eval(car(arg), frame), evaledArgs);
+        arg = cdr(arg);
+    }
+    return reverse(evaledArgs);
 }
 
 /*
 makeClosure
-params:
-returns:
+params: environment - a pointer to a Frame; parameters - a pointer to a Value representing a linked list of parameters; functionBody - a pointer to a Value representing a function's body as a parse tree
+returns: a new Value of type CLOSURE_TYPE containing the information provided in the parameters
 */
-Value *makeClosure(Frame *enviroment, Value *parameters, Value *funtionBody) {
-    // something
+Value *makeClosure(Frame *environment, Value *parameters, Value *functionBody) {
+    Value *closure = talloc(sizeof(Value));
+    closure -> type = CLOSURE_TYPE;
+    closure -> cl.paramNames = parameters;
+    closure -> cl.functionCode = functionBody;
+    closure -> cl.frame = environment;
+    return closure;
 }
 
 /*
@@ -80,6 +82,117 @@ void addBinding(Value *binding, Frame *frame) {
     } else {
         frame -> bindings = cons(binding, frame -> bindings);
     }
+}
+
+/*
+apply
+params: evaledOperator - a pointer to a Value, that represents a closure corresponding to a function; evaledArgs - a pointer to a value representing a list of previously evaluated function arguments
+returns: the result of evaluating the body contained in the given closure, in the context of evaledArgs and the closure's environment
+apply() builds a new frame whose parent is the environment specified in the given closure, and adds bindings to it corresponding to each parameter/argument pair.
+apply() then evaluates the function body specified in the given closure in the context of the new frame, and returns the result.
+*/
+Value *apply(Value *evaledOperator, Value *evaledArgs) {
+    // if the given operator is not a function, throw an error.
+    if (evaledOperator -> type != CLOSURE_TYPE) {
+        printf("Evaluation error: non-function being called as function\n");
+        texit(0);
+    }
+    Frame *frame = makeFrame(evaledOperator -> cl.frame);
+    Value *param = evaledOperator -> cl.paramNames;
+    Value *arg = evaledArgs;
+    while (param -> type != NULL_TYPE) {
+        // if too few arguments are passed, throw an error.
+        if (arg -> type == NULL_TYPE) {
+            printf("Evaluation error: too few args passed to function\n");
+            texit(0);
+        }
+        Value *binding = cons(car(param), car(arg));
+        addBinding(binding, frame);
+        arg = cdr(arg);
+        param = cdr(param);
+    }
+
+    // if too many arguments are passed, throw an error.
+    if (arg -> type != NULL_TYPE) {
+        printf("Evaluation error: too many args passed to function\n");
+        texit(0);
+    }
+
+    Value *result;
+    Value *body = evaledOperator -> cl.functionCode;
+    while (body -> type != NULL_TYPE) {
+        result = eval(car(body), frame);
+        body = cdr(body);
+    }
+    // return the final evaluated expression in body
+    return result;
+}
+
+/*
+evalDefine
+params: args - a pointer to a Value struct, frame - a pointer to a Frame struct
+returns: a Value struct of type VOID_TYPE
+Adds the bindings requested by args to the global frame.
+*/
+Value *evalDefine(Value *args, Frame *frame) {
+    // if no arguments or body are provided for define or too many arguments are provided, throw an error.
+    if (args -> type == NULL_TYPE || cdr(args) -> type == NULL_TYPE  || cdr(cdr(args)) -> type != NULL_TYPE) {
+        printf("Evaluation error: incorrect number of args for define\n");
+        texit(0);
+    // if the given variable for definition is not a symbol, throw an error.
+    } else if (car(args) -> type != SYMBOL_TYPE) {
+        printf("Evaluation error: trying to define non-variable\n");
+        texit(0);
+    }
+    addBinding(cons(car(args), eval(car(cdr(args)), frame)), frame);
+
+    Value *returnValue = talloc(sizeof(Value));
+    returnValue -> type = VOID_TYPE;
+    return returnValue;
+}
+
+/*
+evalLambda
+params: args - a pointer to a Value representing lambda's args; frame - a pointer to a Frame
+returns: a closure corresponding to the lambda expression being evaluated
+evalLambda() checks if the lambda expression's arguments are properly formatted, and if so, creates and returns a closure object corresponding to the expression.
+evalLambda() also performs general error checking, including the number of args, type of function parameters, and duplicate function parameters.
+*/
+Value *evalLambda(Value *args, Frame *frame) {
+    // if too few arguments are given for lambda, throw an error.
+    if (args -> type == NULL_TYPE || cdr(args) -> type == NULL_TYPE) {
+        printf("Evaluation error: incorrect number of args for lambda\n");
+        texit(0);
+    }
+    
+    Value *params = car(args);
+    Value *param = params;
+    Value *visited = makeNull();
+    while (param -> type != NULL_TYPE) {
+        // if lambda's parameters are not formatted correctly, throw an error.
+        if (param -> type != CONS_TYPE) {
+            printf("Evaluation error: bad param formatting in lambda\n");
+            texit(0);
+        // if lambda's paramters are not a symbol, throw an error.
+        } else if (car(param) -> type != SYMBOL_TYPE) {
+            printf("Evaluation error: non-variable param in lambda\n");
+            texit(0);
+        } else {
+            Value *existing = visited;
+            while (existing -> type != NULL_TYPE) {
+                // if lambda's parameters contain duplicate identifiers, throw an error.
+                if (!strcmp(car(existing) -> s, car(param) -> s)) {
+                    printf("Evaluation error: duplicate identifier in lambda\n");
+                    texit(0);
+                }
+                existing = cdr(existing);
+            }
+            visited = cons(car(param), visited);
+            param = cdr(param);
+        }
+    }
+    
+    return makeClosure(frame, params, cdr(args));
 }
 
 /*
@@ -231,13 +344,14 @@ Value *eval(Value *tree, Frame *frame) {
                     return args;
                 }
             
-            } else if (!strcmp(first->s, "define")) {  //is define another special form?
-                // something
+            } else if (!strcmp(first->s, "define")) { 
+                return evalDefine(args, frame);  
 
-            // 
+            } else if (!strcmp(first->s, "lambda")) {
+                return evalLambda(args, frame);
+
             } else {
-                // If not a special form, evaluate the first, evaluate the args, then
-                // apply the first to the args.
+                // if not special form, evaluate first and args, then try to apply the results as a function
                 Value *evaledOperator = eval(first, frame);
                 Value *evaledArgs = evalEach(args, frame);
                 return apply(evaledOperator, evaledArgs);
@@ -300,6 +414,10 @@ void printingHelper(Value *tree, int *needsClose) {
             }
             break;
         }
+        case CLOSURE_TYPE: {
+            printf("#<procedure>");
+            break;
+        }
         default:
             break;
     }
@@ -318,15 +436,11 @@ void interpret(Value *tree) {
         Value *result = eval(car(current), global);
         int needsClose = 0;
         printingHelper(result, &needsClose);
-        printf("\n");
+        if (result -> type != VOID_TYPE) {
+            printf("\n");
+        }
         current = cdr(current);
     }
-}
-
-int main() {
-    Value *tokens = tokenize();
-    Value *parseTrees = parse(tokens);
-    interpret(parseTrees);
 }
 
 #endif

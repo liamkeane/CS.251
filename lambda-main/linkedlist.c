@@ -90,6 +90,8 @@ void displayHelper(Value *list, int index) {
         case NULL_TYPE:
             printf("Null at index %i\n", index);
             break;
+        default:
+            break;
     }
 }
 
@@ -132,6 +134,8 @@ Value *reverseHelper(Value *list, Value *reversed) {
             } else {
                 return cons(reverseHelper(list -> c.cdr, reversed), reversed);
             }
+        default:
+            return list;
     }
 }
 

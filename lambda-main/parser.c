@@ -82,6 +82,8 @@ Value *push(Value *tree, Value *token) {
         case CONS_TYPE:
             newToken->type = CONS_TYPE;
             return cons(token, tree);
+        default:
+            break;
     }
 
     tree = cons(newToken, tree);
@@ -217,6 +219,8 @@ void printTreeHelper(Value *tree, int *needsClose) {
                 *needsClose -= 1;
                 printf(") ");
             }
+            break;
+        default:
             break;
     }
 }

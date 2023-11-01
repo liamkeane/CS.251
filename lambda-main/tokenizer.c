@@ -376,6 +376,8 @@ void displayTokens(Value *list) {
                 break;
             case NULL_TYPE:
                 break; 
+            default:
+                break;
         }
         currentItem = cdr(currentItem);
     }

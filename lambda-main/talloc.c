@@ -69,6 +69,10 @@ void tfreeHelper(Value *memoryAddress) {
             case NULL_TYPE:
                 free(memoryAddress);
                 break;
+            case VOID_TYPE:
+                break;
+            case CLOSURE_TYPE:
+                break;
         }
 }
 
