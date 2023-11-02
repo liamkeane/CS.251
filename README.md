@@ -1,2 +1,2 @@
 # PL
-(mostly) Complete repo of work from CS.251
+a (mostly) complete repo of work from CS.251
