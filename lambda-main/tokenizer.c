@@ -242,7 +242,7 @@ Value *tokenize() {
                 Value *newToken = processSymbol(sign);
                 list = cons(newToken, list);
             
-            // subcases: +/- read as part of a number
+            // subcase: +/- read as part of a number
             } else if (48 <= charRead && charRead <= 57) {
                 ungetc(charRead, stdin);
                 Value *newToken = processNumber(sign);
