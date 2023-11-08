@@ -73,6 +73,8 @@ void tfreeHelper(Value *memoryAddress) {
                 break;
             case CLOSURE_TYPE:
                 break;
+            default:
+                break;
         }
 }
 

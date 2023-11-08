@@ -16,18 +16,188 @@
 Value *eval(Value *, Frame *);
 
 /*
+primitivePlus
+params:
+returns:
+*/
+Value *primitivePlus(Value *args) {
+   // 
+    if (args -> type == NULL_TYPE) {
+        Value *result = talloc(sizeof(Value));
+        result -> type = INT_TYPE;
+        result -> i = 0;
+    }
+   
+   Value *current = args;
+   Value *currentValue;
+   int sumAsInt = 0;
+   double sumAsDouble = 0;
+   bool allInts = true;
+   while (current -> type != NULL_TYPE) {
+        currentValue = car(current);
+        if (currentValue -> type != INT_TYPE && currentValue -> type != DOUBLE_TYPE) {
+            printf("Evaluation error: attempting to sum non real-number arguments\n");
+            texit(0);
+        } else if (currentValue -> type == DOUBLE_TYPE && allInts) {
+            sumAsDouble = sumAsInt + currentValue -> d;
+            allInts = false;      
+        } else if (allInts) {
+            sumAsInt = sumAsInt + currentValue -> i;
+        } else {
+            if (currentValue -> type == INT_TYPE) {
+                sumAsDouble = sumAsDouble + currentValue -> i;
+            } else {
+                sumAsDouble = sumAsDouble + currentValue -> d;
+            }
+        }
+        current = cdr(current);
+    }
+
+    Value *result = talloc(sizeof(Value));
+    if (allInts) {
+        result -> type = INT_TYPE;
+        result -> i = sumAsInt;
+    } else {
+        result -> type = DOUBLE_TYPE;
+        result -> d = sumAsDouble;
+    }
+
+    return result;
+}
+
+/*
+primitiveNull
+params:
+returns:
+*/
+Value *primitiveNull(Value *args) {
+    if (args -> type == NULL_TYPE || cdr(args) -> type != NULL_TYPE) {
+        printf("Evaluation error: incorrect number of args for 'null?'\n");
+        texit(0);
+    } else {
+        Value *arg = car(args);
+        Value *result = talloc(sizeof(Value));
+        result -> type = BOOL_TYPE;
+        if (arg -> type != CONS_TYPE) {
+            result -> i = 0;
+            return result;
+        } else {
+            if (car(arg) -> type == NULL_TYPE) {
+                result -> i = 1;
+            } else {
+                result -> i = 0;
+            }
+            return result;
+        }
+    }
+    return makeNull();
+}
+
+/*
+primitiveCar
+params:
+returns:
+*/
+Value *primitiveCar(Value *args) {
+    if (args -> type == NULL_TYPE || cdr(args) -> type != NULL_TYPE) {
+        printf("Evaluation error: incorrect number of args for 'car'\n");
+        texit(0);
+    } else {
+        Value *arg = car(args);
+        if (arg -> type != CONS_TYPE || cdr(arg) -> type != NULL_TYPE) {
+            printf("Evaluation error: bad argument format for 'car'\n");
+            texit(0);
+        } else {
+            arg = car(arg);
+            if (arg -> type != CONS_TYPE) {
+                printf("Evaluation error: argument to car is not a cons cell\n");
+                texit(0);
+            } else {
+                return car(arg);
+            }
+        }
+    }
+    return makeNull();
+}
+
+/*
+primitiveCdr
+params:
+returns:
+*/
+Value *primitiveCdr(Value *args) {
+    if (args -> type == NULL_TYPE || cdr(args) -> type != NULL_TYPE) {
+        printf("Evaluation error: incorrect number of args for 'cdr'\n");
+        texit(0);
+    } else {
+       Value *arg = car(args);
+        if (arg -> type != CONS_TYPE || cdr(arg) -> type != NULL_TYPE) {
+            printf("Evaluation error: bad argument format for 'cdr'\n");
+            texit(0);
+        } else {
+            arg = car(arg);
+            if (arg -> type != CONS_TYPE) {
+                printf("Evaluation error: argument to cdr is not a cons cell\n");
+                texit(0);
+            } else {
+                return cons(cdr(arg), makeNull());
+            }
+        }
+    }
+    return makeNull();
+}
+
+/*
+primitiveCons
+params:
+returns:
+*/
+Value *primitiveCons(Value *args) {
+    if (args -> type == NULL_TYPE || cdr(args) -> type == NULL_TYPE || cdr(cdr(args)) -> type != NULL_TYPE) {
+        printf("Evaluation error: incorrect number of args for 'cons'\n");
+        texit(0);
+    } else {
+        return cons(cons(car(args), car(cdr(args))), makeNull());
+    }
+    return makeNull();
+}
+
+/*
+bind
+params:
+returns:
+*/
+void bind(char *name, Value *(*function)(struct Value *), Frame *frame) {
+    // Add primitive functions to top-level bindings list
+    Value *functionValue = talloc(sizeof(Value));
+    functionValue -> type = PRIMITIVE_TYPE;
+    functionValue -> pf = function;
+    
+    Value *nameValue = talloc(sizeof(Value));
+    nameValue -> type = SYMBOL_TYPE;
+    nameValue -> s = name;
+    Value *binding = cons(nameValue, functionValue);
+    
+    frame -> bindings = cons(binding, frame -> bindings);
+}
+
+/*
 evalEach
 params: args - a pointer to a Value struct, frame - a pointer to a Frame struct
 returns: a Value struct containing the evaluated arguments to be passed into apply()
 */
-Value *evalEach(Value *args, Frame *frame) {
+Value *evalEach(Value *args, Frame *frame, bool needsReversal) {
     Value *evaledArgs = makeNull();
     Value *arg = args;
     while (arg -> type != NULL_TYPE) {
         evaledArgs = cons(eval(car(arg), frame), evaledArgs);
         arg = cdr(arg);
     }
-    return reverse(evaledArgs);
+    if (needsReversal) {
+        return reverse(evaledArgs);
+    } else {
+        return evaledArgs;
+    }
 }
 
 /*
@@ -93,39 +263,48 @@ apply() then evaluates the function body specified in the given closure in the c
 */
 Value *apply(Value *evaledOperator, Value *evaledArgs) {
     // if the given operator is not a function, throw an error.
-    if (evaledOperator -> type != CLOSURE_TYPE) {
+    if (evaledOperator -> type != CLOSURE_TYPE && evaledOperator -> type != PRIMITIVE_TYPE) {
         printf("Evaluation error: non-function being called as function\n");
         texit(0);
-    }
-    Frame *frame = makeFrame(evaledOperator -> cl.frame);
-    Value *param = evaledOperator -> cl.paramNames;
-    Value *arg = evaledArgs;
-    while (param -> type != NULL_TYPE) {
-        // if too few arguments are passed, throw an error.
-        if (arg -> type == NULL_TYPE) {
-            printf("Evaluation error: too few args passed to function\n");
+    
+    //
+    } else if (evaledOperator -> type == PRIMITIVE_TYPE) {
+        Value *result = (evaledOperator -> pf)(evaledArgs);
+        return result;
+        
+    // 
+    } else {
+        Frame *frame = makeFrame(evaledOperator -> cl.frame);
+        Value *param = evaledOperator -> cl.paramNames;
+        Value *arg = evaledArgs;
+        while (param -> type != NULL_TYPE) {
+            // if too few arguments are passed, throw an error.
+            if (arg -> type == NULL_TYPE) {
+                printf("Evaluation error: too few args passed to function\n");
+                texit(0);
+            }
+            Value *binding = cons(car(param), car(arg));
+            addBinding(binding, frame);
+            arg = cdr(arg);
+            param = cdr(param);
+        }
+
+        // if too many arguments are passed, throw an error.
+        if (arg -> type != NULL_TYPE) {
+            printf("Evaluation error: too many args passed to function\n");
             texit(0);
         }
-        Value *binding = cons(car(param), car(arg));
-        addBinding(binding, frame);
-        arg = cdr(arg);
-        param = cdr(param);
-    }
 
-    // if too many arguments are passed, throw an error.
-    if (arg -> type != NULL_TYPE) {
-        printf("Evaluation error: too many args passed to function\n");
-        texit(0);
+        Value *result;
+        Value *body = evaledOperator -> cl.functionCode;
+        while (body -> type != NULL_TYPE) {
+            result = eval(car(body), frame);
+            body = cdr(body);
+        }
+        // return the final evaluated expression in body
+        return result;
     }
-
-    Value *result;
-    Value *body = evaledOperator -> cl.functionCode;
-    while (body -> type != NULL_TYPE) {
-        result = eval(car(body), frame);
-        body = cdr(body);
-    }
-    // return the final evaluated expression in body
-    return result;
+    return makeNull();
 }
 
 /*
@@ -329,7 +508,11 @@ Value *eval(Value *tree, Frame *frame) {
             Value *first = car(tree);
             Value *args = cdr(tree);
 
-            if (!strcmp(first->s, "if")) {
+            if (first -> type != SYMBOL_TYPE) {
+                printf("Evaluation error: given type not a function\n");
+                texit(0);
+
+            } else if (!strcmp(first->s, "if")) {
                return evalIf(args, frame);
                
             } else if (!strcmp(first->s, "let")) {
@@ -353,9 +536,13 @@ Value *eval(Value *tree, Frame *frame) {
             } else {
                 // if not special form, evaluate first and args, then try to apply the results as a function
                 Value *evaledOperator = eval(first, frame);
-                Value *evaledArgs = evalEach(args, frame);
-                return apply(evaledOperator, evaledArgs);
+                bool needsReversal = true;
+                if (!strcmp(first->s, "car") || !strcmp(first->s, "cdr")) {
+                    needsReversal = false;
+                }
+                Value *evaledArgs = evalEach(args, frame, needsReversal);
 
+                return apply(evaledOperator, evaledArgs);
             }
             break;
         }
@@ -399,13 +586,21 @@ void printingHelper(Value *tree, int *needsClose) {
             break;
         }
         case CONS_TYPE: {
-            if (car(tree)->type == CONS_TYPE || car(tree)->type == NULL_TYPE) {
-                printf("(");
-                *needsClose += 1;
+            if (cdr(tree) -> type != CONS_TYPE && cdr(tree) -> type != NULL_TYPE) {
+                printingHelper(car(tree), needsClose);
+                printf(". ");
+                printingHelper(cdr(tree), needsClose);
+                break;
+                
+            } else {
+                if (car(tree)->type == CONS_TYPE || car(tree)->type == NULL_TYPE) {
+                    printf("(");
+                    *needsClose += 1;
+                }
+                printingHelper(car(tree), needsClose);
+                printingHelper(cdr(tree), needsClose);
+                break;
             }
-            printingHelper(car(tree), needsClose);
-            printingHelper(cdr(tree), needsClose);
-            break;
         }
         case NULL_TYPE: {
             if (*needsClose > 0) {
@@ -432,6 +627,14 @@ Given the pointer to a Scheme program, iteratively call eval() on each parse tre
 void interpret(Value *tree) {
     Value *current = tree;
     Frame *global = makeFrame(NULL);
+    
+    //add primitive functions to the global frame
+    bind("+", primitivePlus, global);
+    bind("null?", primitiveNull, global);
+    bind("car", primitiveCar, global);
+    bind("cdr", primitiveCdr, global);
+    bind("cons", primitiveCons, global);
+
     while (current->type != NULL_TYPE) {
         Value *result = eval(car(current), global);
         int needsClose = 0;
@@ -442,5 +645,11 @@ void interpret(Value *tree) {
         current = cdr(current);
     }
 }
+
+// int main() {
+//     Value *tokens = tokenize();
+//     Value *parseTree = parse(tokens);
+//     interpret(parseTree);
+// }
 
 #endif
