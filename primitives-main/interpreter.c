@@ -17,15 +17,17 @@ Value *eval(Value *, Frame *);
 
 /*
 primitivePlus
-params:
-returns:
+params: args - a pointer to a Value representing a linked list of arguments
+returns: a pointer to a Value containing an integer or double that equals the sum of the arguments
+primitivePlus() throws an error if it encounters a non real-number argument.
+If no arguments are provided, primitivePlus returns a pointer to a Value containing 0.
 */
 Value *primitivePlus(Value *args) {
-   // 
+   // Checks if no arguments were provided, and if so returns a pointer to an integer-type Value containing 0
     if (args -> type == NULL_TYPE) {
-        Value *result = talloc(sizeof(Value));
-        result -> type = INT_TYPE;
-        result -> i = 0;
+    Value *result = talloc(sizeof(Value));
+    result -> type = INT_TYPE;
+    result -> i = 0;
     }
    
    Value *current = args;
@@ -38,6 +40,7 @@ Value *primitivePlus(Value *args) {
         if (currentValue -> type != INT_TYPE && currentValue -> type != DOUBLE_TYPE) {
             printf("Evaluation error: attempting to sum non real-number arguments\n");
             texit(0);
+        // If a double type seen in the arguments, switches sum to be stored as a double
         } else if (currentValue -> type == DOUBLE_TYPE && allInts) {
             sumAsDouble = sumAsInt + currentValue -> d;
             allInts = false;      
@@ -53,6 +56,7 @@ Value *primitivePlus(Value *args) {
         current = cdr(current);
     }
 
+    // make sure result is of the proper type and has its data stored in the proper locations
     Value *result = talloc(sizeof(Value));
     if (allInts) {
         result -> type = INT_TYPE;
@@ -67,8 +71,11 @@ Value *primitivePlus(Value *args) {
 
 /*
 primitiveNull
-params:
-returns:
+params: args - a pointer to a Value representing a linked list of arguments
+returns: a pointer to a boolean-type Value
+primitiveNull() throws an error if greater or fewer than one argument is provided.
+The boolean-type Value returned by primitiveNull() will contain true if the argument was an empty list, and false in any other case.
+The 
 */
 Value *primitiveNull(Value *args) {
     if (args -> type == NULL_TYPE || cdr(args) -> type != NULL_TYPE) {
@@ -78,25 +85,25 @@ Value *primitiveNull(Value *args) {
         Value *arg = car(args);
         Value *result = talloc(sizeof(Value));
         result -> type = BOOL_TYPE;
-        if (arg -> type != CONS_TYPE) {
-            result -> i = 0;
-            return result;
-        } else {
-            if (car(arg) -> type == NULL_TYPE) {
+        if (args -> type == CONS_TYPE) {
+            if (isNull(arg)) {
                 result -> i = 1;
             } else {
                 result -> i = 0;
             }
-            return result;
+        } else {
+            result -> i = 0;
         }
+        return result;
     }
     return makeNull();
 }
 
 /*
 primitiveCar
-params:
-returns:
+params: args - a pointer to a Value representing a linked list of arguments
+returns: a pointer to a Value representing the first item in a given list
+primitiveCar() will throw an error if it is given greater or fewer than one argument.
 */
 Value *primitiveCar(Value *args) {
     if (args -> type == NULL_TYPE || cdr(args) -> type != NULL_TYPE) {
@@ -104,17 +111,11 @@ Value *primitiveCar(Value *args) {
         texit(0);
     } else {
         Value *arg = car(args);
-        if (arg -> type != CONS_TYPE || cdr(arg) -> type != NULL_TYPE) {
-            printf("Evaluation error: bad argument format for 'car'\n");
+        if (arg -> type != CONS_TYPE) {
+            printf("Evaluation error: argument to car is not a cons cell\n");
             texit(0);
         } else {
-            arg = car(arg);
-            if (arg -> type != CONS_TYPE) {
-                printf("Evaluation error: argument to car is not a cons cell\n");
-                texit(0);
-            } else {
-                return car(arg);
-            }
+            return car(arg);
         }
     }
     return makeNull();
@@ -122,26 +123,21 @@ Value *primitiveCar(Value *args) {
 
 /*
 primitiveCdr
-params:
-returns:
+params: a pointer to a Value representing a linked list of arguments
+returns: a pointer to a Value representing everything but the first item in a given list
+primitiveCdr() will throw an error if it is given greater or fewer than one argument.
 */
 Value *primitiveCdr(Value *args) {
     if (args -> type == NULL_TYPE || cdr(args) -> type != NULL_TYPE) {
         printf("Evaluation error: incorrect number of args for 'cdr'\n");
         texit(0);
     } else {
-       Value *arg = car(args);
-        if (arg -> type != CONS_TYPE || cdr(arg) -> type != NULL_TYPE) {
-            printf("Evaluation error: bad argument format for 'cdr'\n");
+        Value *arg = car(args);
+        if (arg -> type != CONS_TYPE) {
+            printf("Evaluation error: argument to cdr is not a cons cell\n");
             texit(0);
         } else {
-            arg = car(arg);
-            if (arg -> type != CONS_TYPE) {
-                printf("Evaluation error: argument to cdr is not a cons cell\n");
-                texit(0);
-            } else {
-                return cons(cdr(arg), makeNull());
-            }
+            return cdr(arg);
         }
     }
     return makeNull();
@@ -149,26 +145,29 @@ Value *primitiveCdr(Value *args) {
 
 /*
 primitiveCons
-params:
-returns:
+params: args - a pointer to a Value struct
+returns: a pointer to a Value struct
+Returns a Cons cell of the two values contained within args. If args does not contain exactly two args, throw an error.
 */
 Value *primitiveCons(Value *args) {
+    // If args does not contain exactly two args, throw an error.
     if (args -> type == NULL_TYPE || cdr(args) -> type == NULL_TYPE || cdr(cdr(args)) -> type != NULL_TYPE) {
         printf("Evaluation error: incorrect number of args for 'cons'\n");
         texit(0);
+
     } else {
-        return cons(cons(car(args), car(cdr(args))), makeNull());
+        return cons(car(args), car(cdr(args)));
     }
     return makeNull();
 }
 
 /*
 bind
-params:
-returns:
+params: name - a pointer to a string, function - a pointer to a function, frame - a pointer to a Frame struct
+returns: nothing
+bind() adds a definition to the global frame where the given name is the key and the function pointer is its value.
 */
 void bind(char *name, Value *(*function)(struct Value *), Frame *frame) {
-    // Add primitive functions to top-level bindings list
     Value *functionValue = talloc(sizeof(Value));
     functionValue -> type = PRIMITIVE_TYPE;
     functionValue -> pf = function;
@@ -176,6 +175,7 @@ void bind(char *name, Value *(*function)(struct Value *), Frame *frame) {
     Value *nameValue = talloc(sizeof(Value));
     nameValue -> type = SYMBOL_TYPE;
     nameValue -> s = name;
+
     Value *binding = cons(nameValue, functionValue);
     
     frame -> bindings = cons(binding, frame -> bindings);
@@ -193,11 +193,23 @@ Value *evalEach(Value *args, Frame *frame, bool needsReversal) {
         evaledArgs = cons(eval(car(arg), frame), evaledArgs);
         arg = cdr(arg);
     }
-    if (needsReversal) {
-        return reverse(evaledArgs);
-    } else {
-        return evaledArgs;
+    if (needsReversal && evaledArgs -> type != NULL_TYPE) {
+        // do we only want to reverse the top level (the function reverses everything inside). This could be done with just a loop.
+
+        //reverse the list of parse trees
+        Value *prev = makeNull();
+        Value *current = evaledArgs;
+        Value *next = cdr(evaledArgs);
+        while (next->type != NULL_TYPE) {
+            current->c.cdr = prev;
+            prev = current;
+            current = next;
+            next = cdr(next);
+        }
+        current->c.cdr = prev;
+        evaledArgs = current;
     }
+    return evaledArgs;
 }
 
 /*
@@ -508,7 +520,7 @@ Value *eval(Value *tree, Frame *frame) {
             Value *first = car(tree);
             Value *args = cdr(tree);
 
-            if (first -> type != SYMBOL_TYPE) {
+            if (first -> type != SYMBOL_TYPE && first -> type != CONS_TYPE) {
                 printf("Evaluation error: given type not a function\n");
                 texit(0);
 
@@ -524,7 +536,7 @@ Value *eval(Value *tree, Frame *frame) {
                     printf("Evaluation error: incorrect number of args for quote\n");
                     texit(0);
                 } else {
-                    return args;
+                    return car(args);
                 }
             
             } else if (!strcmp(first->s, "define")) { 
@@ -559,7 +571,9 @@ params: tree - a pointer to a Value struct, needsClose - a pointer to an integer
 returns: nothing
 Given a tree representing the result of evaluating a parse tree, print the contents of the tree.
 */
-void printingHelper(Value *tree, int *needsClose) {
+void printingHelper(Value *tree) {
+    Value *current;
+    Value *currentCar;
     switch (tree->type) {
         case INT_TYPE: {
             printf("%i ", tree -> i);
@@ -586,30 +600,32 @@ void printingHelper(Value *tree, int *needsClose) {
             break;
         }
         case CONS_TYPE: {
-            if (cdr(tree) -> type != CONS_TYPE && cdr(tree) -> type != NULL_TYPE) {
-                printingHelper(car(tree), needsClose);
-                printf(". ");
-                printingHelper(cdr(tree), needsClose);
-                break;
-                
-            } else {
-                if (car(tree)->type == CONS_TYPE || car(tree)->type == NULL_TYPE) {
-                    printf("(");
-                    *needsClose += 1;
+            Value *current = tree;
+            printf("(");
+            while (current -> type != NULL_TYPE) {
+                currentCar = car(current);
+                if (cdr(current) -> type != CONS_TYPE && cdr(current) -> type != NULL_TYPE) {
+                    printingHelper(currentCar);
+                    printf(". ");
+                    printingHelper(cdr(current));
+                    break;
+                } else {
+                    printingHelper(currentCar);
                 }
-                printingHelper(car(tree), needsClose);
-                printingHelper(cdr(tree), needsClose);
-                break;
+                current = cdr(current);
             }
+            printf(") ");
+            break;
         }
         case NULL_TYPE: {
-            if (*needsClose > 0) {
-                *needsClose -= 1;
-                printf(") ");
-            }
+            printf("()");
             break;
         }
         case CLOSURE_TYPE: {
+            printf("#<procedure>");
+            break;
+        }
+        case PRIMITIVE_TYPE: {
             printf("#<procedure>");
             break;
         }
@@ -638,18 +654,12 @@ void interpret(Value *tree) {
     while (current->type != NULL_TYPE) {
         Value *result = eval(car(current), global);
         int needsClose = 0;
-        printingHelper(result, &needsClose);
+        printingHelper(result);
         if (result -> type != VOID_TYPE) {
             printf("\n");
         }
         current = cdr(current);
     }
 }
-
-// int main() {
-//     Value *tokens = tokenize();
-//     Value *parseTree = parse(tokens);
-//     interpret(parseTree);
-// }
 
 #endif
