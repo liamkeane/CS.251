@@ -6,7 +6,7 @@ typedef enum {
     OPEN_TYPE, CLOSE_TYPE, BOOL_TYPE, SYMBOL_TYPE,
     
     // Types below are only for bonus work
-    OPENBRACKET_TYPE, CLOSEBRACKET_TYPE, DOT_TYPE, SINGLEQUOTE_TYPE,
+    // OPENBRACKET_TYPE, CLOSEBRACKET_TYPE, DOT_TYPE, SINGLEQUOTE_TYPE,
 
     // Types below are new for define/lambda portion
     VOID_TYPE, CLOSURE_TYPE,
