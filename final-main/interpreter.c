@@ -16,6 +16,261 @@
 Value *eval(Value *, Frame *);
 
 /*
+primtiveMinus
+params:
+returns:
+*/
+Value *primitiveMinus(Value *args) {
+    // Checks if no arguments were provided, and if so throw an error
+    if (args -> type == NULL_TYPE) {
+        printf("Evaluation error: no argument provided for '-'\n");
+        texit(0);
+    }
+
+    int differenceAsInt = 0;
+    double differenceAsDouble = 0;
+    bool allInts = true;
+
+    Value *current = args;
+
+    // case where there is one argument
+    if (cdr(args) -> type != NULL_TYPE) {
+        if (car(args) -> type == DOUBLE_TYPE) {
+            allInts = false;
+            differenceAsDouble = car(args) -> d;
+            current = cdr(current);
+        } else if (car(args) -> type == INT_TYPE) {
+            differenceAsInt = car(args) -> i;
+            current = cdr(current);
+        }
+    }
+
+    // case where there are more than one argument
+    Value *currentValue;
+    while (current -> type != NULL_TYPE) {
+        currentValue = car(current);
+        if (currentValue -> type != INT_TYPE && currentValue -> type != DOUBLE_TYPE) {
+            printf("Evaluation error: non real-number arguments for '-'\n");
+            texit(0);
+        // If a double type seen in the arguments, switches sum to be stored as a double
+        } else if (currentValue -> type == DOUBLE_TYPE && allInts) {
+            differenceAsDouble = differenceAsInt - currentValue -> d;
+            allInts = false;      
+        } else if (allInts) {
+            differenceAsInt = differenceAsInt - currentValue -> i;
+        } else {
+            if (currentValue -> type == INT_TYPE) {
+                differenceAsDouble = differenceAsDouble - currentValue -> i;
+            } else {
+                differenceAsDouble = differenceAsDouble - currentValue -> d;
+            }
+        }
+        current = cdr(current);
+    }
+
+    // make sure result is of the proper type
+    Value *result = talloc(sizeof(Value));
+    if (allInts) {
+        result -> type = INT_TYPE;
+        result -> i = differenceAsInt;
+    } else {
+        result -> type = DOUBLE_TYPE;
+        result -> d = differenceAsDouble;
+    }
+
+    return result;
+}
+
+/*
+primtiveLessThan
+params:
+returns:
+*/
+Value *primitiveLessThan(Value *args) {
+    // result is initially set to true
+    Value *result = talloc(sizeof(Value));
+    result -> type = BOOL_TYPE;
+    result -> i = 1;
+
+    // Check if there are no arguments
+    if (args -> type == NULL_TYPE) {
+        return result;
+    }
+
+    Value *current = args;
+    // Check if the first argument is a numerial type
+    if (car(current) -> type != INT_TYPE && car(current) -> type != DOUBLE_TYPE) {
+        printf("Evaluation error: non numerical argument for '<'\n");
+        texit(0); 
+    }
+
+    while (cdr(current) -> type != NULL_TYPE) {
+        // Check if the next argument is a numerical type
+        if (car(cdr(current)) -> type != INT_TYPE && car(cdr(current)) -> type != DOUBLE_TYPE) {
+            printf("Evaluation error: non numerical argument for '<'\n");
+            texit(0); 
+        }
+        // Is the current argument of double type?
+        if (car(current) -> type == DOUBLE_TYPE) {
+            // Is the next argument of double type?
+            if (car(cdr(current)) -> type == DOUBLE_TYPE) {
+                if (car(current) -> d >= car(cdr(current)) -> d) {
+                    result -> i = 0;
+                    return result;
+                }
+            // The next argument must be of int type
+            } else {
+                if (car(current) -> d >= car(cdr(current)) -> i) {
+                    result -> i = 0;
+                    return result;
+                }
+            }
+
+        // The current argument must be of int type
+        } else {
+            // Is the next argument of double type?
+            if (car(cdr(current)) -> type == DOUBLE_TYPE) {
+                if (car(current) -> i >= car(cdr(current)) -> d) {
+                    result -> i = 0;
+                    return result;
+                }
+            // The next argument must be of int type
+            } else {
+                if (car(current) -> i >= car(cdr(current)) -> i) {
+                    result -> i = 0;
+                    return result;
+                }
+            }
+        }
+        current = cdr(current);
+    }
+
+    return result;
+}
+
+/*
+primtiveGreatorThan
+params:
+returns:
+*/
+Value *primitiveGreatorThan(Value *args) {
+    // result is initially set to true
+    Value *result = talloc(sizeof(Value));
+    result -> type = BOOL_TYPE;
+    result -> i = 1;
+
+    // Check if there are no arguments
+    if (args -> type == NULL_TYPE) {
+        return result;
+    }
+
+    Value *current = args;
+    // Check if the first argument is a numerial type
+    if (car(current) -> type != INT_TYPE && car(current) -> type != DOUBLE_TYPE) {
+        printf("Evaluation error: non numerical argument for '>'\n");
+        texit(0); 
+    }
+
+    while (cdr(current) -> type != NULL_TYPE) {
+        // Check if the next argument is a numerical type
+        if (car(cdr(current)) -> type != INT_TYPE && car(cdr(current)) -> type != DOUBLE_TYPE) {
+            printf("Evaluation error: non numerical argument for '>'\n");
+            texit(0); 
+        }
+        // Is the current argument of double type?
+        if (car(current) -> type == DOUBLE_TYPE) {
+            // Is the next argument of double type?
+            if (car(cdr(current)) -> type == DOUBLE_TYPE) {
+                if (car(current) -> d <= car(cdr(current)) -> d) {
+                    result -> i = 0;
+                    return result;
+                }
+            // The next argument must be of int type
+            } else {
+                if (car(current) -> d <= car(cdr(current)) -> i) {
+                    result -> i = 0;
+                    return result;
+                }
+            }
+
+        // The current argument must be of int type
+        } else {
+            // Is the next argument of double type?
+            if (car(cdr(current)) -> type == DOUBLE_TYPE) {
+                if (car(current) -> i <= car(cdr(current)) -> d) {
+                    result -> i = 0;
+                    return result;
+                }
+            // The next argument must be of int type
+            } else {
+                if (car(current) -> i <= car(cdr(current)) -> i) {
+                    result -> i = 0;
+                    return result;
+                }
+            }
+        }
+        current = cdr(current);
+    }
+
+    return result;
+}
+
+/*
+primtiveEqual
+params:
+returns:
+*/
+Value *primitiveEqual(Value *args) {
+    // result is initially set to true
+    Value *result = talloc(sizeof(Value));
+    result -> type = BOOL_TYPE;
+    result -> i = 1;
+
+    Value *current = args;
+    while (current -> type != NULL_TYPE) {
+        // Checks if argument is neither a float nor an int
+        if (car(current) -> type != INT_TYPE && car(current) -> type != DOUBLE_TYPE) {
+            printf("Evaluation error: non numerical argument for '='\n");
+            texit(0);
+        }
+
+        // is the current arg of type double?
+        if (car(current) -> type == DOUBLE_TYPE) {
+            // is the first arg of type double?
+            if (car(args) -> type == DOUBLE_TYPE) {
+                if (car(current) -> d != car(args) -> d) {
+                    result -> i = 0;
+                    return result;
+                }
+            } else {
+                if (car(current) -> d != car(args) -> i) {
+                    result -> i = 0;
+                    return result;
+                }
+            }
+        
+        // current arg is an int type
+        } else {
+            // is the first arg of type double?
+            if (car(args) -> type == DOUBLE_TYPE) {
+                if (car(current) -> i != car(args) -> d) {
+                    result -> i = 0;
+                    return result;
+                }
+            } else {
+                if (car(current) -> i != car(args) -> i) {
+                    result -> i = 0;
+                    return result;
+                }
+            }
+        }
+
+        current = cdr(current);
+    }
+    return result;
+}
+
+/*
 primitivePlus
 params: args - a pointer to a Value representing a linked list of arguments
 returns: a pointer to a Value containing an integer or double that equals the sum of the arguments
@@ -23,11 +278,11 @@ primitivePlus() throws an error if it encounters a non real-number argument.
 If no arguments are provided, primitivePlus returns a pointer to a Value containing 0.
 */
 Value *primitivePlus(Value *args) {
-   // Checks if no arguments were provided, and if so returns a pointer to an integer-type Value containing 0
+    // Checks if no arguments were provided, and if so returns a pointer to an integer-type Value containing 0
     if (args -> type == NULL_TYPE) {
-    Value *result = talloc(sizeof(Value));
-    result -> type = INT_TYPE;
-    result -> i = 0;
+        Value *result = talloc(sizeof(Value));
+        result -> type = INT_TYPE;
+        result -> i = 0;
     }
    
    Value *current = args;
@@ -194,7 +449,6 @@ Value *evalEach(Value *args, Frame *frame, bool needsReversal) {
         arg = cdr(arg);
     }
     if (needsReversal && evaledArgs -> type != NULL_TYPE) {
-        // do we only want to reverse the top level (the function reverses everything inside). This could be done with just a loop.
 
         //reverse the list of parse trees
         Value *prev = makeNull();
@@ -320,6 +574,31 @@ Value *apply(Value *evaledOperator, Value *evaledArgs) {
 }
 
 /*
+lookUpSymbol
+params: symbol - a pointer to a Value struct, frame - a pointer to a Frame struct
+returns: a pointer to a Value struct
+Given a frame and a symbol, traverse the frame searching for the symbol's assigned value.
+*/
+Value *lookUpSymbol(Value *symbol, Frame *frame) {
+    Value *currentBinding = frame -> bindings;
+    while (currentBinding -> type != NULL_TYPE) {
+        if (!strcmp(car(car(currentBinding)) -> s, symbol -> s)) {
+            return car(currentBinding);
+        } else {
+            currentBinding = cdr(currentBinding);
+        }
+    }
+
+    // if the symbol has not been defined, throw an error.
+    if (frame -> parent == NULL) {
+        printf("Evaluation error: binding for symbol '%s' not defined in a frame\n", symbol -> s);
+        texit(0);
+    }
+
+    return lookUpSymbol(symbol, frame -> parent);
+}
+
+/*
 evalDefine
 params: args - a pointer to a Value struct, frame - a pointer to a Frame struct
 returns: a Value struct of type VOID_TYPE
@@ -420,12 +699,47 @@ evalBegin
 params:
 returns:
 */
+Value *evalBegin(Value *args, Frame *frame) {
+    // if there are no arguments, return a Value of VOID_TYPE
+    if (args -> type == NULL_TYPE) {
+        Value *returnValue = talloc(sizeof(Value));
+        returnValue -> type = VOID_TYPE;
+        return returnValue;
+    }
+    
+    // else, return the evaluated final argument
+    Value *result;
+    while (args -> type != NULL_TYPE) {
+        result = eval(car(args), frame);
+        args = cdr(args);
+    }
+    return result;
+}
 
 /*
 evalSetbang
 params:
 returns:
 */
+Value *evalSetbang(Value *args, Frame *frame) {
+    // if no arguments or body are provided for define or too many arguments are provided, throw an error.
+    if (args -> type == NULL_TYPE || cdr(args) -> type == NULL_TYPE  || cdr(cdr(args)) -> type != NULL_TYPE) {
+        printf("Evaluation error: incorrect number of args for 'set!'\n");
+        texit(0);
+    // if the given variable for definition is not a symbol, throw an error.
+    } else if (car(args) -> type != SYMBOL_TYPE) {
+        printf("Evaluation error: trying to reassign non-variable with 'set!'\n");
+        texit(0);
+    }
+    // find symbol, then reassign its value
+    Value *symbol = lookUpSymbol(car(args), frame);
+    symbol -> c.cdr = eval(car(cdr(args)), frame);
+
+    // return Value of VOID_TYPE
+    Value *returnValue = talloc(sizeof(Value));
+    returnValue -> type = VOID_TYPE;
+    return returnValue;
+}
 
 /*
 evalLetrec
@@ -435,46 +749,73 @@ returns:
 Value *evalLetrec(Value *args, Frame *frame) {
     // if no arguments or body are provided for let, throw an error.
     if (args -> type == NULL_TYPE || cdr(args) -> type == NULL_TYPE) {
-        printf("Evaluation error: incorrect number of args for let\n");
+        printf("Evaluation error: incorrect number of args for letrec\n");
         texit(0);
 
     }
-    // create new frame in which to evaluate let
+    // create new frame in which to evaluate letrec
     Frame *newFrame = makeFrame(frame);
     
     // checks list of bindings to make sure it is a proper list; throws error if not
     if (car(args) -> type != CONS_TYPE && car(args) -> type != NULL_TYPE) {
-        printf("Evaluation error: invalid let binding\n");
+        printf("Evaluation error: invalid letrec binding\n");
         texit(0);
     }
 
-    // checks proper nested list formatting for list of bindings; throws error if bindings are incorrectly formatted
+    Value *unspecValue = talloc(sizeof(Value));
+    unspecValue -> type = UNSPECIFIED_TYPE;
     Value *binding = car(args);
+
+    // checks proper nested list formatting for list of bindings; throws error if bindings are incorrectly formatted
     while(binding -> type != NULL_TYPE) {
         // check outer list format
         if (binding -> type != CONS_TYPE) {
-            printf("Evaluation error: invalid let binding\n");
+            printf("Evaluation error: invalid letrec binding\n");
             texit(0);
 
         // check each binding itself
         } else if (car(binding) -> type != CONS_TYPE) {
-            printf("Evaluation error: invalid let binding\n");
+            printf("Evaluation error: invalid letrec binding\n");
             texit(0);
 
-        // create binding and set its value to UNSPECIFIED_TYPE
+        // create binding and temporarily set its value to UNSPECIFIED_TYPE
         } else {
-
-            
-            addBinding(cons(car(car(binding)), eval(car(cdr(car(binding))), frame)), newFrame);
+            addBinding(cons(car(car(binding)), unspecValue), newFrame);
             binding = cdr(binding);
         }
     }
 
-    // evaluate each expression 
-    while() {
+    // reverse list of bindings to ensure they are assigned the correct values
+    Value *prev = makeNull();
+    Value *current = newFrame -> bindings;
+    Value *next = cdr(current);
+    while (next->type != NULL_TYPE) {
+        current->c.cdr = prev;
+        prev = current;
+        current = next;
+        next = cdr(next);
+    }
+    current->c.cdr = prev;
+    newFrame -> bindings = current;
 
+    // evaluate each expression in the context of newFrame and add the result to bindings
+    Value *unspecBindings = newFrame -> bindings;
+    binding = car(args);
+    while(binding -> type != NULL_TYPE) {
+        car(unspecBindings) -> c.cdr = eval(car(cdr(car(binding))), newFrame);
+        unspecBindings = cdr(unspecBindings);
+        binding = cdr(binding);
     }
 
+    // evaluates body of the let statement in the context of newFrame 
+    Value *result;
+    Value *body = cdr(args);
+    while (body -> type != NULL_TYPE) {
+        result = eval(car(body), newFrame);
+        body = cdr(body);
+    }
+    // return the final evaluated expression in body
+    return result;
 }
 
 /*
@@ -531,31 +872,6 @@ Value *evalLet(Value *args, Frame *frame) {
 }
 
 /*
-lookUpSymbol
-params: symbol - a pointer to a Value struct, frame - a pointer to a Frame struct
-returns: a pointer to a Value struct
-Given a frame and a symbol, traverse the frame searching for the symbol's assigned value.
-*/
-Value *lookUpSymbol(Value *symbol, Frame *frame) {
-    Value *currentBinding = frame -> bindings;
-    while (currentBinding -> type != NULL_TYPE) {
-        if (!strcmp(car(car(currentBinding)) -> s, symbol -> s)) {
-            return cdr(car(currentBinding));
-        } else {
-            currentBinding = cdr(currentBinding);
-        }
-    }
-
-    // if the symbol has not been defined, throw an error.
-    if (frame -> parent == NULL) {
-        printf("Evaluation error: binding for symbol '%s' not defined in a frame\n", symbol -> s);
-        texit(0);
-    }
-
-    return lookUpSymbol(symbol, frame -> parent);
-}
-
-/*
 eval
 params: tree - a pointer to a Value struct, frame - a pointer to a Frame struct
 returns: a pointer to a Value struct
@@ -563,7 +879,7 @@ Given a pointer to a parse tree and a pointer to a frame, evaluate the parse tre
 */
 Value *eval(Value *tree, Frame *frame) {
     switch (tree->type)  {
-        case: UNSPECIFIED_TYPE: {
+        case UNSPECIFIED_TYPE: {
             printf("Evaluation error: must not evaluate another variable before values are computed\n");
             texit(0);
         }
@@ -580,7 +896,7 @@ Value *eval(Value *tree, Frame *frame) {
             return tree;
         }
         case SYMBOL_TYPE: {
-            return lookUpSymbol(tree, frame);
+            return cdr(lookUpSymbol(tree, frame));
         }  
         case CONS_TYPE: {
             Value *first = car(tree);
@@ -590,13 +906,16 @@ Value *eval(Value *tree, Frame *frame) {
                 printf("Evaluation error: given type not a function\n");
                 texit(0);
 
-            } else if (!strcmp(first->s, "if")) {
+            } else if (!strcmp(first -> s, "if")) {
                return evalIf(args, frame);
                
-            } else if (!strcmp(first->s, "let")) {
+            } else if (!strcmp(first -> s, "let")) {
                 return evalLet(args, frame);
 
-            } else if (!strcmp(first->s, "quote")) {
+            } else if (!strcmp(first -> s, "letrec")) {
+                return evalLetrec(args, frame);
+
+            } else if (!strcmp(first -> s, "quote")) {
                 // if there are none or multiple args given to quote, throw an error.
                 if (args -> type != CONS_TYPE || cdr(args) -> type != NULL_TYPE) {
                     printf("Evaluation error: incorrect number of args for quote\n");
@@ -610,6 +929,12 @@ Value *eval(Value *tree, Frame *frame) {
 
             } else if (!strcmp(first->s, "lambda")) {
                 return evalLambda(args, frame);
+
+            } else if (!strcmp(first->s, "set!")) {
+                return evalSetbang(args, frame); 
+
+            } else if (!strcmp(first->s, "begin")) {
+                return evalBegin(args, frame);
 
             } else {
                 // if not special form, evaluate first and args, then try to apply the results as a function
@@ -712,10 +1037,14 @@ void interpret(Value *tree) {
     
     //add primitive functions to the global frame
     bind("+", primitivePlus, global);
+    bind("-", primitiveMinus, global);
+    bind("=", primitiveEqual, global);
     bind("null?", primitiveNull, global);
     bind("car", primitiveCar, global);
     bind("cdr", primitiveCdr, global);
     bind("cons", primitiveCons, global);
+    bind(">", primitiveGreatorThan, global);
+    bind("<", primitiveLessThan, global);
 
     while (current->type != NULL_TYPE) {
         Value *result = eval(car(current), global);
@@ -727,5 +1056,11 @@ void interpret(Value *tree) {
         current = cdr(current);
     }
 }
+
+// int main() {
+//     Value *tokens = tokenize();
+//     Value *parseTree = parse(tokens);
+//     interpret(parseTree);
+// }
 
 #endif

@@ -4,8 +4,7 @@
 #include <stdlib.h>
 
 int main () {
-    int x = 5;
-    double y;
-    y = x + 6.60;
-    printf("%f\n", y);
+    int x = 1;
+    double y = 1;
+    printf("%f\n", x-y);
 }
