@@ -17,8 +17,10 @@ Value *eval(Value *, Frame *);
 
 /*
 primtiveMinus
-params:
-returns:
+params: args - a pointer to a Value representing a linked list of arguments
+returns: a pointer to a Value containing an integer or double that equals the difference of the arguments
+primitiveMinus() throws an error if it encounters a non-numerical argument
+If no arguments are provided, primitiveMinus throws an error
 */
 Value *primitiveMinus(Value *args) {
     // Checks if no arguments were provided, and if so throw an error
@@ -83,8 +85,10 @@ Value *primitiveMinus(Value *args) {
 
 /*
 primtiveLessThan
-params:
-returns:
+params: args - a pointer to a Value representing a linked list of arguments
+returns: a pointer to a Value containing a boolean
+primitiveLessThan() returns the result of whether all its argument's adjacent pairs are less than one another (from left to right)
+Throws an error if a non-numerical argument is given
 */
 Value *primitiveLessThan(Value *args) {
     // result is initially set to true
@@ -150,8 +154,10 @@ Value *primitiveLessThan(Value *args) {
 
 /*
 primtiveGreatorThan
-params:
-returns:
+params: args - a pointer to a Value representing a linked list of arguments
+returns: a pointer to a Value containing a boolean
+primitiveGreatorThan() returns the result of whether all its argument's adjacent pairs are greator than one another (from left to right)
+Throws an error if a non-numerical argument is given
 */
 Value *primitiveGreatorThan(Value *args) {
     // result is initially set to true
@@ -217,8 +223,10 @@ Value *primitiveGreatorThan(Value *args) {
 
 /*
 primtiveEqual
-params:
-returns:
+params: args - a pointer to a Value representing a linked list of arguments
+returns: a pointer to a Value containing a boolean
+primitiveEqual() returns the result of whether all its arguments are equal
+Throws an error if a non-numerical argument is given
 */
 Value *primitiveEqual(Value *args) {
     // result is initially set to true
@@ -274,8 +282,8 @@ Value *primitiveEqual(Value *args) {
 primitivePlus
 params: args - a pointer to a Value representing a linked list of arguments
 returns: a pointer to a Value containing an integer or double that equals the sum of the arguments
-primitivePlus() throws an error if it encounters a non real-number argument.
-If no arguments are provided, primitivePlus returns a pointer to a Value containing 0.
+primitivePlus() throws an error if it encounters a non real-number argument
+If no arguments are provided, primitivePlus returns a pointer to a Value containing 0
 */
 Value *primitivePlus(Value *args) {
     // Checks if no arguments were provided, and if so returns a pointer to an integer-type Value containing 0
@@ -329,8 +337,7 @@ primitiveNull
 params: args - a pointer to a Value representing a linked list of arguments
 returns: a pointer to a boolean-type Value
 primitiveNull() throws an error if greater or fewer than one argument is provided.
-The boolean-type Value returned by primitiveNull() will contain true if the argument was an empty list, and false in any other case.
-The 
+The boolean-type Value returned by primitiveNull() will contain true if the argument was an empty list, and false in any other case. 
 */
 Value *primitiveNull(Value *args) {
     if (args -> type == NULL_TYPE || cdr(args) -> type != NULL_TYPE) {
@@ -696,8 +703,9 @@ Value *evalIf(Value *args, Frame *frame) {
 
 /*
 evalBegin
-params:
-returns:
+params: args - a pointer to a Value representing the arguments of the begin statement; frame - a pointer to a Frame
+returns: a pointer to a Value that is the result of evaluating the the last argument in begin
+evalBegin() evaluates each of its arguments and returns the result of its last argument 
 */
 Value *evalBegin(Value *args, Frame *frame) {
     // if there are no arguments, return a Value of VOID_TYPE
@@ -718,8 +726,10 @@ Value *evalBegin(Value *args, Frame *frame) {
 
 /*
 evalSetbang
-params:
-returns:
+params: args - a pointer to a Value representing the arguments of the set! statement; frame - a pointer to a Frame
+returns: a pointer to a Value struct of type VOID_TYPE
+evalSetbang() is similar to evalDefine(), except that it does not create a new variable; rather, it modifies an existing one
+Throws an error if the variable has not yet been defined
 */
 Value *evalSetbang(Value *args, Frame *frame) {
     // if no arguments or body are provided for define or too many arguments are provided, throw an error.
@@ -743,8 +753,9 @@ Value *evalSetbang(Value *args, Frame *frame) {
 
 /*
 evalLetrec
-params:
-returns:
+params: args - a pointer to a Value representing the arguments of the let statement; frame - a pointer to a Frame
+returns: a pointer to a Value, that is the result of evaluating the last body of the letrec statement within the proper Frame
+evalLetrec() is functionally similar to evalLet(), but it allows recursive calls which were defined within the letrec
 */
 Value *evalLetrec(Value *args, Frame *frame) {
     // if no arguments or body are provided for let, throw an error.
@@ -764,9 +775,9 @@ Value *evalLetrec(Value *args, Frame *frame) {
 
     Value *unspecValue = talloc(sizeof(Value));
     unspecValue -> type = UNSPECIFIED_TYPE;
-    Value *binding = car(args);
-
+    
     // checks proper nested list formatting for list of bindings; throws error if bindings are incorrectly formatted
+    Value *binding = car(args);
     while(binding -> type != NULL_TYPE) {
         // check outer list format
         if (binding -> type != CONS_TYPE) {
@@ -785,29 +796,27 @@ Value *evalLetrec(Value *args, Frame *frame) {
         }
     }
 
-    // reverse list of bindings to ensure they are assigned the correct values
-    Value *prev = makeNull();
-    Value *current = newFrame -> bindings;
-    Value *next = cdr(current);
-    while (next->type != NULL_TYPE) {
-        current->c.cdr = prev;
-        prev = current;
-        current = next;
-        next = cdr(next);
-    }
-    current->c.cdr = prev;
-    newFrame -> bindings = current;
-
-    // evaluate each expression in the context of newFrame and add the result to bindings
-    Value *unspecBindings = newFrame -> bindings;
+    // evaluate each expression in the context of newFrame and add the result to a temporary list
+    Value *tempList = makeNull();
     binding = car(args);
-    while(binding -> type != NULL_TYPE) {
-        car(unspecBindings) -> c.cdr = eval(car(cdr(car(binding))), newFrame);
-        unspecBindings = cdr(unspecBindings);
+    while (binding -> type != NULL_TYPE) {
+        tempList = cons(eval(car(cdr(car(binding))), newFrame), tempList);
+        if (car(tempList) -> type == UNSPECIFIED_TYPE) {
+            printf("Evaluation error: attempting to assign unspecified type\n");
+            texit(0);
+        }
         binding = cdr(binding);
     }
 
-    // evaluates body of the let statement in the context of newFrame 
+    // Replace bindings with the evaluated expressions
+    binding = newFrame -> bindings;
+    while (binding -> type != NULL_TYPE) {
+        car(binding) -> c.cdr = car(tempList);
+        tempList = cdr(tempList);
+        binding = cdr(binding);
+    }
+
+    // evaluates body of the letrec statement in the context of newFrame 
     Value *result;
     Value *body = cdr(args);
     while (body -> type != NULL_TYPE) {
@@ -821,7 +830,7 @@ Value *evalLetrec(Value *args, Frame *frame) {
 /*
 evalLet
 params: args - a pointer to a Value representing the arguments of the let statement; frame - a pointer to a Frame
-returns: a pointer to a Value, that is the result of evaluating the body of the let statement within the proper Frame
+returns: a pointer to a Value, that is the result of evaluating the last body of the let statement within the proper Frame
 evalLet() creates a new Frame containing the let statement's bindings, then evaluates the let statement's body in the context of that Frame.
 */
 Value *evalLet(Value *args, Frame *frame) {
@@ -842,7 +851,7 @@ Value *evalLet(Value *args, Frame *frame) {
 
     // checks proper nested list formatting for list of bindings; throws error if bindings are incorrectly formatted
     Value *binding = car(args);
-    while(binding -> type != NULL_TYPE) {
+    while (binding -> type != NULL_TYPE) {
         // check outer list format
         if (binding -> type != CONS_TYPE) {
             printf("Evaluation error: invalid let binding\n");
@@ -880,7 +889,7 @@ Given a pointer to a parse tree and a pointer to a frame, evaluate the parse tre
 Value *eval(Value *tree, Frame *frame) {
     switch (tree->type)  {
         case UNSPECIFIED_TYPE: {
-            printf("Evaluation error: must not evaluate another variable before values are computed\n");
+            printf("Evaluation error: attempting to assign unspecified type\n");
             texit(0);
         }
         case INT_TYPE: {
@@ -1056,11 +1065,5 @@ void interpret(Value *tree) {
         current = cdr(current);
     }
 }
-
-// int main() {
-//     Value *tokens = tokenize();
-//     Value *parseTree = parse(tokens);
-//     interpret(parseTree);
-// }
 
 #endif
